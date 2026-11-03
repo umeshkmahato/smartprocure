@@ -1,0 +1,72 @@
+# ── Java / Maven ─────────────────────────────────────────────────────────────
+target/
+*.class
+*.jar
+*.war
+*.ear
+.mvn/
+!.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.properties
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.idea/
+*.iml
+*.ipr
+*.iws
+.eclipse/
+.settings/
+.classpath
+.project
+.factorypath
+.vscode/
+*.suo
+*.sw?
+
+# ── Environment / Secrets ─────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+log/
+
+# ── Docker overrides ──────────────────────────────────────────────────────────
+docker-compose.override.yml
+
+# ── Node / Frontend ───────────────────────────────────────────────────────────
+node_modules/
+dist/
+build/
+.parcel-cache/
+*.local
+.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+._*
+
+# ── Test / Coverage ───────────────────────────────────────────────────────────
+surefire-reports/
+jacoco.exec
+target/site/
+playwright-report/
+test-results/
+e2e/test-results/
+
+# ── Uploads ───────────────────────────────────────────────────────────────────
+uploads/
+
+# ── GraalVM native ────────────────────────────────────────────────────────────
+*.o
+*.so
+*.a
+*.native

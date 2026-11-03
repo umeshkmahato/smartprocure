@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <springProperty name="APP_NAME" source="spring.application.name" defaultValue="smartprocure"/>
+
+    <!-- ── Plain-text console (dev / test / default) ─────────────────────── -->
+    <appender name="CONSOLE_PLAIN" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] [%X{correlationId:-}] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- ── Structured JSON console (production) ──────────────────────────── -->
+    <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <customFields>{"app":"${APP_NAME}"}</customFields>
+            <includeMdcKeyName>correlationId</includeMdcKeyName>
+            <includeMdcKeyName>traceId</includeMdcKeyName>
+            <includeMdcKeyName>spanId</includeMdcKeyName>
+        </encoder>
+    </appender>
+
+    <!-- ── Default root (no active profile) ──────────────────────────────── -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE_PLAIN"/>
+    </root>
+    <logger name="com.smartprocure" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE_PLAIN"/>
+    </logger>
+
+    <!-- ── dev + test: verbose plain text ────────────────────────────────── -->
+    <springProfile name="dev,test">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE_PLAIN"/>
+        </root>
+        <logger name="com.smartprocure" level="DEBUG" additivity="false">
+            <appender-ref ref="CONSOLE_PLAIN"/>
+        </logger>
+        <logger name="org.springframework.security" level="DEBUG" additivity="false">
+            <appender-ref ref="CONSOLE_PLAIN"/>
+        </logger>
+    </springProfile>
+
+    <!-- ── prod: structured JSON (overrides default root) ───────────────── -->
+    <springProfile name="prod">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE_JSON"/>
+        </root>
+        <logger name="com.smartprocure" level="INFO" additivity="false">
+            <appender-ref ref="CONSOLE_JSON"/>
+        </logger>
+    </springProfile>
+
+</configuration>

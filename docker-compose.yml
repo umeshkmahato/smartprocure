@@ -1,0 +1,161 @@
+version: '3.8'
+# =============================================================================
+# SmartProcure – Local Development Infrastructure
+# =============================================================================
+# Usage:
+#   docker compose up -d                      # start all services
+#   docker compose up -d postgres redis        # start specific services
+#   docker compose logs -f kafka               # tail logs
+#   docker compose down -v                     # stop and remove volumes
+#
+# First-time Ollama model pull (after compose up):
+#   docker exec sp-ollama ollama pull llama3.2:8b
+#   docker exec sp-ollama ollama pull nomic-embed-text
+# =============================================================================
+
+services:
+
+  # ── PostgreSQL 16 + PGVector ──────────────────────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: sp-postgres
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: smartprocure
+      POSTGRES_USER: ${DB_USERNAME:-smartprocure}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-smartprocure_dev}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-smartprocure} -d smartprocure"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - sp-network
+    restart: unless-stopped
+
+  # ── Redis 7 ──────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7.4-alpine
+    container_name: sp-redis
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sp-network
+    restart: unless-stopped
+
+  # ── Zookeeper (Kafka dependency) ──────────────────────────────────────────
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.7.1
+    container_name: sp-zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_LOG4J_ROOT_LOGLEVEL: WARN
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+      - zookeeper-log:/var/lib/zookeeper/log
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 2181 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - sp-network
+    restart: unless-stopped
+
+  # ── Apache Kafka ──────────────────────────────────────────────────────────
+  kafka:
+    image: confluentinc/cp-kafka:7.7.1
+    container_name: sp-kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "${KAFKA_PORT:-9092}:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:${KAFKA_PORT:-9092},INTERNAL://kafka:29092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG4J_LOGGERS: "kafka=WARN,kafka.controller=WARN,kafka.log.LogCleaner=WARN,state.change.logger=WARN,kafka.producer.async.DefaultEventHandler=WARN"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost ${KAFKA_PORT:-9092} || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - sp-network
+    restart: unless-stopped
+
+  # ── MailHog — Dev SMTP + Web UI ───────────────────────────────────────────
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: sp-mailhog
+    ports:
+      - "${MAIL_PORT:-1025}:1025"    # SMTP
+      - "8025:8025"                   # Web UI → http://localhost:8025
+    networks:
+      - sp-network
+    restart: unless-stopped
+
+  # ── Ollama — Local AI Inference ───────────────────────────────────────────
+  # After first startup, pull models:
+  #   docker exec sp-ollama ollama pull llama3.2:8b
+  #   docker exec sp-ollama ollama pull nomic-embed-text
+  ollama:
+    image: ollama/ollama:latest
+    container_name: sp-ollama
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:11434/api/version"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 60s
+    networks:
+      - sp-network
+    restart: unless-stopped
+
+# =============================================================================
+volumes:
+  postgres-data:
+  redis-data:
+  zookeeper-data:
+  zookeeper-log:
+  kafka-data:
+  ollama-data:
+
+networks:
+  sp-network:
+    name: sp-network
+    driver: bridge

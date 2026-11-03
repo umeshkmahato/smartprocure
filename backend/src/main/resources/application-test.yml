@@ -1,0 +1,41 @@
+spring:
+  # Exclude infrastructure auto-configurations that require external services.
+  # PostgreSQL is provided by the Testcontainers @ServiceConnection annotation.
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+      - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+
+  flyway:
+    enabled: true
+    clean-disabled: false   # allow flyway:clean in test lifecycle if needed
+
+  cache:
+    type: none              # SimpleCacheManager (no-op) — avoids Redis dependency
+
+  mail:
+    host: localhost
+    port: 1025
+
+management:
+  health:
+    redis:
+      enabled: false
+    kafka:
+      enabled: false
+  tracing:
+    sampling:
+      probability: 0.0      # No tracing overhead in tests
+
+logging:
+  level:
+    com.smartprocure: DEBUG
+    org.flywaydb: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: DEBUG

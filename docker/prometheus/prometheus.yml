@@ -1,0 +1,26 @@
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+  external_labels:
+    app: smartprocure
+    environment: local
+
+scrape_configs:
+
+  - job_name: 'smartprocure-backend'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      # host.docker.internal resolves to the Docker host on Mac/Windows.
+      # On Linux replace with: 172.17.0.1 (default Docker bridge gateway).
+      - targets: ['host.docker.internal:8080']
+    relabel_configs:
+      - target_label: instance
+        replacement: 'smartprocure-backend'
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'otel-collector'
+    static_configs:
+      - targets: ['otel-collector:8889']

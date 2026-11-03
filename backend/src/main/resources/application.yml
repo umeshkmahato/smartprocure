@@ -1,0 +1,213 @@
+spring:
+  application:
+    name: smartprocure-backend
+
+  # Java 21 Virtual Threads — enabled globally for Tomcat and @Async executors
+  threads:
+    virtual:
+      enabled: true
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/smartprocure}
+    username: ${DB_USERNAME:smartprocure}
+    password: ${DB_PASSWORD:smartprocure_dev}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: SmartProcure-Pool
+      maximum-pool-size: ${DB_POOL_MAX:20}
+      minimum-idle: ${DB_POOL_MIN:5}
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000
+      auto-commit: true
+
+  jpa:
+    hibernate:
+      ddl-auto: validate            # NEVER allow Hibernate to modify schema in any env
+    show-sql: false
+    open-in-view: false             # Prevent OSIV anti-pattern
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+        jdbc:
+          batch_size: 50
+          time_zone: UTC
+        order_inserts: true
+        order_updates: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+    validate-on-migrate: true
+    out-of-order: false
+    clean-disabled: true            # Prevent accidental data wipe in production
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 10
+          max-idle: 5
+          min-idle: 2
+          max-wait: -1ms
+      repositories:
+        enabled: false              # Use RedisTemplate directly; no Redis repositories
+
+  cache:
+    type: redis
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      properties:
+        spring.json.add.type.headers: false
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP:sp-main-group}
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.smartprocure.*"
+    admin:
+      fail-fast: false              # Do not abort startup if Kafka broker is unavailable
+
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_AUTH:false}
+          starttls:
+            enable: ${MAIL_TLS:false}
+
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: ${MAX_FILE_SIZE:10MB}
+      max-request-size: ${MAX_REQUEST_SIZE:10MB}
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+      fail-on-empty-beans: false
+    deserialization:
+      fail-on-unknown-properties: false
+    default-property-inclusion: non_null
+    time-zone: UTC
+
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+    include-exception: false
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/plain
+    min-response-size: 1024
+  forward-headers-strategy: framework
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,flyway,loggers,threaddump,env,caches
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+    metrics:
+      enabled: true
+  health:
+    redis:
+      enabled: true
+    db:
+      enabled: true
+    mail:
+      enabled: false                # MailHog does not expose a health check
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      slo:
+        http.server.requests: 50ms,100ms,200ms,500ms,1000ms
+    tags:
+      application: ${spring.application.name}
+      env: ${SPRING_PROFILES_ACTIVE:default}
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLE_RATE:1.0}
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
+
+springdoc:
+  api-docs:
+    path: /api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operations-sorter: method
+    tags-sorter: alpha
+    display-request-duration: true
+    try-it-out-enabled: true
+  show-actuator: false
+
+# ── Application-specific properties ─────────────────────────────────────────
+app:
+  jwt:
+    secret: ${JWT_SECRET:bXktc3VwZXItc2VjcmV0LWtleS1mb3Itc21hcnRwcm9jdXJlLWFwcC0yMDI1LW11c3QtYmUtYXQtbGVhc3QtMjU2LWJpdHM=}
+    access-token-expiry-seconds: ${JWT_ACCESS_EXPIRY:900}
+    refresh-token-expiry-seconds: ${JWT_REFRESH_EXPIRY:604800}
+
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+
+  file-upload:
+    invoice-directory: ${INVOICE_UPLOAD_DIR:./uploads/invoices}
+    max-file-size-bytes: 10485760
+    allowed-content-types:
+      - application/pdf
+      - image/jpeg
+      - image/png
+
+  ai:
+    chat-model: ${OLLAMA_CHAT_MODEL:llama3.2:8b}
+    embedding-model: ${OLLAMA_EMBED_MODEL:nomic-embed-text}
+    base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+    timeout-seconds: ${AI_TIMEOUT:30}
+
+  approval:
+    thresholds:
+      level1-max-amount: 10000.00
+      level2-max-amount: 50000.00
+
+  admin:
+    # Default admin credentials — MUST be overridden in production via env vars
+    email: ${ADMIN_EMAIL:admin@smartprocure.internal}
+    password: ${ADMIN_PASSWORD:Admin@SmartProcure2025!}
+
+logging:
+  level:
+    root: INFO
+    com.smartprocure: INFO
+    org.springframework.security: WARN
+    org.springframework.web: WARN
+    org.hibernate.SQL: WARN

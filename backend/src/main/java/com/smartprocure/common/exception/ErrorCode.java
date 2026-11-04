@@ -77,6 +77,14 @@ public enum ErrorCode {
     QUOTATION_EXPIRED(HttpStatus.BAD_REQUEST,           "Quotation validity date has passed"),
     QUOTATION_ALREADY_SELECTED(HttpStatus.BAD_REQUEST,  "A winning quotation has already been selected"),
     QUOTATION_VENDOR_NOT_INVITED(HttpStatus.BAD_REQUEST,"This vendor was not invited to submit a quotation"),
+    // aliases used by QuotationService
+    RFQ_NOT_FOUND(HttpStatus.NOT_FOUND,                  "RFQ not found"),
+    RFQ_INVALID_TRANSITION(HttpStatus.BAD_REQUEST,        "Invalid RFQ status transition"),
+    RFQ_NOT_PUBLISHED(HttpStatus.BAD_REQUEST,             "RFQ is not published"),
+    RFQ_DEADLINE_PASSED(HttpStatus.BAD_REQUEST,           "RFQ deadline has passed"),
+    QUOTATION_ALREADY_SUBMITTED(HttpStatus.CONFLICT,      "Vendor has already submitted a quotation for this RFQ"),
+    VENDOR_NOT_INVITED(HttpStatus.BAD_REQUEST,            "Vendor is not invited to this RFQ"),
+    APPROVAL_ALREADY_ACTIONED(HttpStatus.BAD_REQUEST,     "Approval step has already been actioned"),
 
     // ── Purchase Order ────────────────────────────────────────────────────
     PURCHASE_ORDER_NOT_FOUND(HttpStatus.NOT_FOUND,          "Purchase order not found"),

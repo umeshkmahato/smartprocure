@@ -48,6 +48,12 @@ public enum ErrorCode {
     PURCHASE_REQUEST_ALREADY_CANCELLED(HttpStatus.BAD_REQUEST, "Purchase request has already been cancelled"),
     PURCHASE_REQUEST_UNAUTHORIZED(HttpStatus.FORBIDDEN,     "Not authorised to modify this purchase request"),
     PURCHASE_REQUEST_EMPTY_ITEMS(HttpStatus.BAD_REQUEST,    "Purchase request must contain at least one line item"),
+    // aliases used by PurchaseRequestService
+    PR_NOT_FOUND(HttpStatus.NOT_FOUND,            "Purchase request not found"),
+    PR_NOT_EDITABLE(HttpStatus.BAD_REQUEST,       "Purchase request cannot be edited in its current state"),
+    PR_INVALID_TRANSITION(HttpStatus.BAD_REQUEST, "Invalid purchase request status transition"),
+    PR_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND,       "Purchase request line item not found"),
+    ACCESS_DENIED(HttpStatus.FORBIDDEN,           "You do not have permission to perform this action"),
 
     // ── Approval ──────────────────────────────────────────────────────────
     APPROVAL_THRESHOLD_NOT_FOUND(HttpStatus.NOT_FOUND,      "Approval threshold configuration not found"),

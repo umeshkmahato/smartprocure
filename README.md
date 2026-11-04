@@ -203,8 +203,8 @@ smartprocure/
 |---|---|---|
 | **1 — Foundation** | Project skeleton, configs, common infra, Docker, tests | ✅ **Complete** |
 | 2 — User Management | DB schema, JWT auth, RBAC, refresh tokens | ✅ **Complete**  |
-| 3 — Vendor Management | Vendor CRUD, contacts, ratings, approval | ⏳ Next |
-| 4 — Purchase Requests | PR lifecycle, line items, status tracking | ⏳ Pending |
+| **3 — Vendor Management** | Vendor CRUD, contacts, ratings, approval workflow | ✅ **Complete** |
+| **4 — Purchase Requests** | PR lifecycle, line items, status tracking | ⏳ Pending |
 | 5 — Approval Workflow | Multi-level thresholds, delegation, audit | ⏳ Pending |
 | 6 — Quotation Comparison | RFQ, vendor responses, comparison engine | ⏳ Pending |
 | 7 — Purchase Orders | PO generation, delivery tracking | ⏳ Pending |

@@ -64,6 +64,12 @@ public enum ErrorCode {
     DELEGATION_NOT_FOUND(HttpStatus.NOT_FOUND,              "Approval delegation not found"),
     DELEGATION_INVALID_DATE_RANGE(HttpStatus.BAD_REQUEST,   "Delegation end date must be after start date"),
     DELEGATION_ALREADY_EXISTS(HttpStatus.CONFLICT,          "An active delegation already exists for this period"),
+    // aliases used by ApprovalWorkflowService
+    APPROVAL_NOT_FOUND(HttpStatus.NOT_FOUND,                "Approval step not found"),
+    APPROVAL_SELF_DELEGATION(HttpStatus.BAD_REQUEST,        "Cannot delegate to yourself"),
+    APPROVAL_INVALID_DATES(HttpStatus.BAD_REQUEST,          "Delegation end date must not be before start date"),
+    APPROVAL_DELEGATION_OVERLAP(HttpStatus.CONFLICT,        "An active delegation already exists in the requested date range"),
+    APPROVAL_DELEGATION_NOT_FOUND(HttpStatus.NOT_FOUND,     "Approval delegation not found"),
 
     // ── Quotation ─────────────────────────────────────────────────────────
     QUOTATION_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND,   "Quotation request not found"),

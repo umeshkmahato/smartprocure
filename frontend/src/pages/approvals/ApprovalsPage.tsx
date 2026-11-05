@@ -1,135 +1,131 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
+import { CheckSquare, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { approvalsApi } from '@/api/approvals'
 import StatusBadge from '@/components/ui/StatusBadge'
-import SortableHeader from '@/components/ui/SortableHeader'
 import Pagination from '@/components/ui/Pagination'
-import type { SortState } from '@/types'
-import { formatDateTime } from '@/lib/utils'
-import { CheckCircle, XCircle } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { EmptyState } from '@/components/ui/empty-state'
+import { ErrorState } from '@/components/ui/error-state'
+import { toast } from '@/hooks/useToast'
+import { formatDate } from '@/lib/utils'
+
+const PAGE_SIZE = 10
 
 export default function ApprovalsPage() {
   const qc = useQueryClient()
-  const [status,  setStatus]  = useState('')
-  const [page,    setPage]    = useState(0)
-  const [sort,    setSort]    = useState<SortState>({ field: 'createdAt', dir: 'desc' })
-  const [comment, setComment] = useState<Record<number, string>>({})
+  const [page, setPage] = useState(0)
+  const [tab, setTab]   = useState<'pending'|'all'>('pending')
+  const [comments, setComments] = useState<Record<number, string>>({})
 
-  const handleSort = (field: string) => {
-    setSort(prev => ({ field, dir: prev.field === field && prev.dir === 'desc' ? 'asc' : 'desc' }))
-    setPage(0)
-  }
-
-  const { data, isLoading } = useQuery({
-    queryKey: ['approvals', status, page, sort],
-    queryFn: () => approvalsApi.list({
-      status: status || undefined,
-      page, size: 20,
-      sort: sort.field, dir: sort.dir,
-    }),
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['approvals', tab, page],
+    queryFn: () => tab === 'pending'
+      ? approvalsApi.myPending()
+      : approvalsApi.list({ page, size: PAGE_SIZE }),
   })
 
-  const approve = useMutation({
-    mutationFn: ({ id, comments }: { id: number; comments?: string }) =>
-      approvalsApi.approve(id, comments),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['approvals'] }),
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['approvals'] })
+
+  const approveMut = useMutation({
+    mutationFn: ({ id, c }: { id: number; c: string }) => approvalsApi.approve(id, c),
+    onSuccess: () => { invalidate(); toast({ title: 'Request approved', variant: 'success' }) },
+    onError:   () => toast({ title: 'Approval failed', variant: 'danger' }),
   })
 
-  const reject = useMutation({
-    mutationFn: ({ id, comments }: { id: number; comments: string }) =>
-      approvalsApi.reject(id, comments),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['approvals'] }),
+  const rejectMut = useMutation({
+    mutationFn: ({ id, c }: { id: number; c: string }) => approvalsApi.reject(id, c),
+    onSuccess: () => { invalidate(); toast({ title: 'Request rejected', variant: 'warning' }) },
+    onError:   () => toast({ title: 'Rejection failed', variant: 'danger' }),
   })
+
+  const rawData = data as any
+  const items: any[] = rawData?.content ?? (Array.isArray(rawData) ? rawData : [])
+  const totalPages: number = rawData?.totalPages ?? 1
+  const totalElements: number = rawData?.totalElements ?? items.length
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Approvals</h1>
-          <p className="text-slate-500 text-sm mt-0.5">{data?.totalElements ?? 0} approval steps</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Approvals</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Review and action pending approval requests</p>
         </div>
-        <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(0) }}
-          className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <option value="">All statuses</option>
-          {['PENDING','APPROVED','REJECTED','DELEGATED'].map(s => <option key={s}>{s}</option>)}
-        </select>
       </div>
 
-      <div className="bg-white rounded-xl border overflow-hidden">
-        {isLoading ? <p className="p-6 text-sm text-slate-400">Loading…</p>
-          : !data?.content.length ? <p className="p-6 text-sm text-slate-400">No approval steps found.</p>
-          : (
+      <div className="flex gap-1 border-b border-slate-200 dark:border-slate-800">
+        {(['pending', 'all'] as const).map(t => (
+          <button key={t} onClick={() => { setTab(t); setPage(0) }}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${tab === t
+              ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+              : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}>
+            {t === 'pending' ? 'My Pending' : 'All Approvals'}
+          </button>
+        ))}
+      </div>
+
+      <Card className="overflow-hidden">
+        <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50">
-              <tr>
-                <SortableHeader label="PR Number" field="prNumber"    currentSort={sort.field} currentDir={sort.dir} onSort={handleSort} />
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Title</th>
-                <SortableHeader label="Approver"  field="approverName" currentSort={sort.field} currentDir={sort.dir} onSort={handleSort} />
-                <SortableHeader label="Level"     field="level"        currentSort={sort.field} currentDir={sort.dir} onSort={handleSort} />
-                <SortableHeader label="Status"    field="status"       currentSort={sort.field} currentDir={sort.dir} onSort={handleSort} />
-                <SortableHeader label="Actioned"  field="actionedAt"   currentSort={sort.field} currentDir={sort.dir} onSort={handleSort} />
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Comments</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500">Actions</th>
+            <thead>
+              <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40">
+                {['PR Number', 'Title', 'Requester', 'Status', 'Date', 'Actions'].map(h => (
+                  <th key={h} className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">{h}</th>
+                ))}
               </tr>
             </thead>
-            <tbody className="divide-y">
-              {data.content.map((step) => (
-                <tr key={step.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3">
-                    <Link to={`/purchase-requests/${step.purchaseRequestId}`}
-                      className="text-blue-600 hover:underline font-medium">{step.prNumber}</Link>
-                  </td>
-                  <td className="px-4 py-3 text-slate-700 max-w-[180px] truncate">{step.prTitle}</td>
-                  <td className="px-4 py-3 text-slate-600">{step.approverName}</td>
-                  <td className="px-4 py-3 text-center">{step.level}</td>
-                  <td className="px-4 py-3"><StatusBadge status={step.status} /></td>
-                  <td className="px-4 py-3 text-slate-400 text-xs">{formatDateTime(step.actionedAt)}</td>
-                  <td className="px-4 py-3 max-w-[160px]">
-                    {step.status === 'PENDING' ? (
-                      <input placeholder="Comment (optional)"
-                        className="border rounded px-2 py-1 text-xs w-full focus:outline-none focus:ring-1 focus:ring-blue-400"
-                        value={comment[step.id] ?? ''}
-                        onChange={e => setComment(c => ({ ...c, [step.id]: e.target.value }))}
-                      />
-                    ) : (
-                      <span className="text-slate-500 text-xs">{step.comments ?? '—'}</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {step.status === 'PENDING' && (
-                      <div className="flex gap-2">
-                        <button onClick={() => approve.mutate({ id: step.id, comments: comment[step.id] })}
-                          disabled={approve.isPending}
-                          title="Approve"
-                          className="text-green-600 hover:text-green-800 disabled:opacity-40">
-                          <CheckCircle size={18} />
-                        </button>
-                        <button onClick={() => reject.mutate({ id: step.id, comments: comment[step.id] ?? 'Rejected' })}
-                          disabled={reject.isPending || !comment[step.id]}
-                          title="Reject (comment required)"
-                          className="text-red-500 hover:text-red-700 disabled:opacity-40">
-                          <XCircle size={18} />
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
+            {isLoading ? (
+              <TableSkeleton rows={6} cols={6} />
+            ) : isError ? (
+              <tbody><tr><td colSpan={6}><ErrorState onRetry={refetch} /></td></tr></tbody>
+            ) : !items.length ? (
+              <tbody><tr><td colSpan={6}>
+                <EmptyState icon={CheckSquare} title="No approvals found" description="You have no pending approval requests." />
+              </td></tr></tbody>
+            ) : (
+              <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
+                {items.map((a: any) => (
+                  <tr key={a.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors">
+                    <td className="px-5 py-3.5 font-semibold text-slate-800 dark:text-slate-200">{a.prNumber ?? a.id}</td>
+                    <td className="px-5 py-3.5 text-slate-600 dark:text-slate-400 max-w-[180px] truncate">{a.prTitle ?? '—'}</td>
+                    <td className="px-5 py-3.5 text-slate-500 dark:text-slate-400">{a.approverName ?? '—'}</td>
+                    <td className="px-5 py-3.5"><StatusBadge status={a.status} /></td>
+                    <td className="px-5 py-3.5 text-slate-400 text-xs">{formatDate(a.createdAt)}</td>
+                    <td className="px-5 py-3.5">
+                      {a.status === 'PENDING' && (
+                        <div className="flex items-center gap-2">
+                          <input type="text" placeholder="Comment…"
+                            value={comments[a.id] ?? ''}
+                            onChange={e => setComments(p => ({ ...p, [a.id]: e.target.value }))}
+                            className="h-7 w-28 rounded border border-slate-300 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                          />
+                          <Button size="icon-sm" variant="success"
+                            onClick={() => approveMut.mutate({ id: a.id, c: comments[a.id] ?? '' })}
+                            disabled={approveMut.isPending} aria-label="Approve">
+                            <ThumbsUp className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button size="icon-sm" variant="danger-outline"
+                            onClick={() => rejectMut.mutate({ id: a.id, c: comments[a.id] ?? '' })}
+                            disabled={rejectMut.isPending} aria-label="Reject">
+                            <ThumbsDown className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            )}
           </table>
+        </div>
+        {totalPages > 1 && (
+          <div className="border-t border-slate-100 dark:border-slate-800 px-5 py-3">
+            <Pagination page={page} totalPages={totalPages} totalElements={totalElements} size={PAGE_SIZE} onPageChange={setPage} />
+          </div>
         )}
-      </div>
-
-      {data && (
-        <Pagination
-          page={data.number}
-          totalPages={data.totalPages}
-          totalElements={data.totalElements}
-          size={data.size}
-          onPageChange={setPage}
-        />
-      )}
+      </Card>
     </div>
   )
 }

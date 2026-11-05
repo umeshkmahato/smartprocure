@@ -4,28 +4,90 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    /* ── Brand ── */
+    --color-primary:        210 100% 56%;   /* #2563EB blue-600  */
+    --color-primary-hover:  210 100% 50%;   /* #1D4ED8 blue-700  */
+    --color-primary-fg:     0 0% 100%;
+
+    /* ── Sidebar ── */
+    --sidebar-bg:           222 47% 11%;    /* #0F172A navy      */
+    --sidebar-border:       222 47% 16%;
+    --sidebar-fg:           215 20% 65%;    /* muted text        */
+    --sidebar-fg-active:    0 0% 100%;
+    --sidebar-accent:       222 47% 18%;    /* hover bg          */
+    --sidebar-accent-active:210 100% 56%;   /* active indicator  */
+    --sidebar-width:        240px;
+    --sidebar-collapsed:    64px;
+
+    /* ── Workspace ── */
+    --bg-workspace:         210 20% 98%;    /* #F8FAFC           */
+    --bg-card:              0 0% 100%;
+    --bg-muted:             210 20% 96%;
+
+    /* ── Borders ── */
+    --border:               214 32% 91%;    /* #E2E8F0           */
+    --border-strong:        214 32% 82%;
+
+    /* ── Text ── */
+    --text-primary:         222 47% 11%;    /* #0F172A           */
+    --text-secondary:       215 16% 47%;    /* #64748B           */
+    --text-muted:           215 20% 65%;    /* #94A3B8           */
+
+    /* ── Semantic ── */
+    --color-success:        142 71% 45%;
+    --color-warning:        38 92% 50%;
+    --color-danger:         0 84% 60%;
+    --color-info:           199 89% 48%;
+
+    /* ── Radius ── */
+    --radius-sm:            0.375rem;
+    --radius-md:            0.5rem;
+    --radius-lg:            0.75rem;
+    --radius-xl:            1rem;
+
+    /* ── Shadows ── */
+    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  }
+
+  /* ── Dark mode ── */
+  .dark {
+    --bg-workspace:         222 47% 8%;
+    --bg-card:              222 47% 11%;
+    --bg-muted:             222 47% 14%;
+    --border:               222 47% 18%;
+    --border-strong:        222 47% 24%;
+    --text-primary:         210 20% 98%;
+    --text-secondary:       215 20% 65%;
+    --text-muted:           215 16% 47%;
+    --sidebar-bg:           222 47% 6%;
+    --sidebar-border:       222 47% 10%;
+    --sidebar-accent:       222 47% 13%;
+    --bg-card:              222 47% 11%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-workspace text-primary font-sans antialiased;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+
+  /* Smooth scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-slate-300 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-slate-400; }
+  .dark ::-webkit-scrollbar-thumb { @apply bg-slate-600; }
+
+  /* Focus ring */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-blue-500 ring-offset-2;
   }
 }
 
-@layer base {
-  * { @apply border-border; }
-  body { @apply bg-background text-foreground; }
-}
+/* Legacy shadcn variables removed — replaced by enterprise design tokens above */

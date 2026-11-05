@@ -83,12 +83,10 @@ export default function InvoiceDetailPage() {
               <DollarSign size={14} /> Mark Paid
             </button>
           )}
-          {inv.status !== 'PAID' && inv.status !== 'CANCELLED' && (
-            <button onClick={() => cancel.mutate()} disabled={cancel.isPending}
-              className="inline-flex items-center gap-1.5 text-sm font-medium bg-red-50 text-red-700 hover:bg-red-100 px-3 py-1.5 rounded-lg disabled:opacity-50">
-              <Ban size={14} /> Cancel
-            </button>
-          )}
+          <button onClick={() => cancel.mutate()} disabled={cancel.isPending}
+            className="inline-flex items-center gap-1.5 text-sm font-medium bg-red-50 text-red-700 hover:bg-red-100 px-3 py-1.5 rounded-lg disabled:opacity-50">
+            <Ban size={14} /> Cancel
+          </button>
         </div>
       )}
 

@@ -1,112 +1,134 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { Plus, Search, X, Package } from 'lucide-react'
 import { purchaseOrdersApi } from '@/api/purchaseOrders'
 import StatusBadge from '@/components/ui/StatusBadge'
-import SortableHeader from '@/components/ui/SortableHeader'
 import Pagination from '@/components/ui/Pagination'
-import type { SortState } from '@/types'
-import { formatCurrency, formatDate } from '@/lib/utils'
-import { Plus, Search } from 'lucide-react'
+import SortableHeader from '@/components/ui/SortableHeader'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card } from '@/components/ui/card'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { EmptyState } from '@/components/ui/empty-state'
+import { ErrorState } from '@/components/ui/error-state'
+import { formatDate, formatCurrency } from '@/lib/utils'
+
+const PAGE_SIZE = 10
 
 export default function PurchaseOrdersPage() {
-  const [keyword, setKeyword] = useState('')
-  const [status,  setStatus]  = useState('')
-  const [page,    setPage]    = useState(0)
-  const [sort,    setSort]    = useState<SortState>({ field: 'createdAt', dir: 'desc' })
+  const navigate = useNavigate()
+  const [page, setPage]              = useState(0)
+  const [keyword, setKeyword]        = useState('')
+  const [appliedKeyword, setApplied] = useState('')
+  const [sortField, setSortField]    = useState('createdAt')
+  const [sortDir, setSortDir]        = useState<'asc'|'desc'>('desc')
+  const [statusFilter, setStatus]    = useState('')
+
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['pos', page, appliedKeyword, sortField, sortDir, statusFilter],
+    queryFn: () => purchaseOrdersApi.list({
+      page, size: PAGE_SIZE,
+      keyword: appliedKeyword || undefined,
+      sort: sortField, dir: sortDir,
+      status: statusFilter || undefined,
+    }),
+  })
 
   const handleSort = (field: string) => {
-    setSort(prev => ({ field, dir: prev.field === field && prev.dir === 'desc' ? 'asc' : 'desc' }))
+    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortField(field); setSortDir('asc') }
     setPage(0)
   }
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['pos', keyword, status, page, sort],
-    queryFn: () => purchaseOrdersApi.list({
-      keyword: keyword || undefined,
-      status:  status  || undefined,
-      page, size: 20,
-      sort: sort.field, dir: sort.dir,
-    }),
-  })
+  const handleSearch = (e: React.FormEvent) => { e.preventDefault(); setApplied(keyword); setPage(0) }
+  const clearSearch  = () => { setKeyword(''); setApplied(''); setPage(0) }
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Purchase Orders</h1>
-          <p className="text-slate-500 text-sm mt-0.5">{data?.totalElements ?? 0} orders total</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Purchase Orders</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+            {data ? `${data.totalElements} order${data.totalElements !== 1 ? 's' : ''}` : 'Track and manage purchase orders'}
+          </p>
         </div>
-        <Link to="/purchase-orders/new"
-          className="inline-flex items-center gap-1.5 bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-blue-700">
-          <Plus size={15} /> New PO
-        </Link>
+        <Button onClick={() => navigate('/purchase-orders/new')} size="sm">
+          <Plus className="h-4 w-4" /> New Order
+        </Button>
       </div>
 
-      <div className="flex gap-3 flex-wrap">
-        <div className="relative">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input placeholder="Search POs…" value={keyword}
-            onChange={(e) => { setKeyword(e.target.value); setPage(0) }}
-            className="pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-60" />
+      <Card>
+        <div className="flex flex-wrap gap-3 p-4">
+          <form onSubmit={handleSearch} className="flex gap-2 flex-1 min-w-[220px]">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+              <Input value={keyword} onChange={e => setKeyword(e.target.value)} placeholder="Search orders…" className="pl-8" />
+            </div>
+            {appliedKeyword && (
+              <Button type="button" variant="ghost" size="icon" onClick={clearSearch}><X className="h-4 w-4"/></Button>
+            )}
+            <Button type="submit" size="sm">Search</Button>
+          </form>
+          <select value={statusFilter} onChange={e => { setStatus(e.target.value); setPage(0) }}
+            className="h-9 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+            <option value="">All statuses</option>
+            <option value="DRAFT">Draft</option>
+            <option value="ISSUED">Issued</option>
+            <option value="ACKNOWLEDGED">Acknowledged</option>
+            <option value="PARTIALLY_DELIVERED">Partially Delivered</option>
+            <option value="DELIVERED">Delivered</option>
+            <option value="INVOICED">Invoiced</option>
+            <option value="CLOSED">Closed</option>
+            <option value="CANCELLED">Cancelled</option>
+          </select>
         </div>
-        <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(0) }}
-          className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <option value="">All statuses</option>
-          {['DRAFT','ISSUED','ACKNOWLEDGED','PARTIALLY_DELIVERED','DELIVERED','INVOICED','CLOSED','CANCELLED'].map(s =>
-            <option key={s}>{s}</option>)}
-        </select>
-      </div>
+      </Card>
 
-      <div className="bg-white rounded-xl border overflow-hidden">
-        {isLoading ? <p className="p-6 text-sm text-slate-400">Loading…</p>
-          : !data?.content.length ? <p className="p-6 text-sm text-slate-400">No purchase orders found.</p>
-          : (
+      <Card className="overflow-hidden">
+        <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50">
-              <tr>
-                <SortableHeader label="PO Number"     field="poNumber"     currentSort={sort.field} currentDir={sort.dir} onSort={handleSort} />
-                <th className="px-5 py-3 text-left text-xs font-medium uppercase text-slate-500">Vendor</th>
-                <SortableHeader label="Status"        field="status"       currentSort={sort.field} currentDir={sort.dir} onSort={handleSort} />
-                <SortableHeader label="Total"         field="totalAmount"  currentSort={sort.field} currentDir={sort.dir} onSort={handleSort} />
-                <SortableHeader label="Delivery Date" field="deliveryDate" currentSort={sort.field} currentDir={sort.dir} onSort={handleSort} />
-                <SortableHeader label="Issued At"     field="issuedAt"     currentSort={sort.field} currentDir={sort.dir} onSort={handleSort} />
-                <th className="px-5 py-3" />
+            <thead>
+              <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40">
+                {([['poNumber','PO Number'],['vendorName','Vendor'],['status','Status'],['totalAmount','Total'],['currency','Currency'],['createdAt','Date']] as [string,string][]).map(([f,l]) => (
+                  <SortableHeader key={f} field={f} label={l} currentSort={sortField} currentDir={sortDir} onSort={handleSort} />
+                ))}
               </tr>
             </thead>
-            <tbody className="divide-y">
-              {data.content.map((po) => (
-                <tr key={po.id} className="hover:bg-slate-50">
-                  <td className="px-5 py-3">
-                    <Link to={`/purchase-orders/${po.id}`} className="font-medium text-blue-600 hover:underline">
-                      {po.poNumber}
-                    </Link>
-                  </td>
-                  <td className="px-5 py-3 text-slate-700">{po.vendorName}</td>
-                  <td className="px-5 py-3"><StatusBadge status={po.status} /></td>
-                  <td className="px-5 py-3 font-medium">{formatCurrency(po.totalAmount, po.currency)}</td>
-                  <td className="px-5 py-3 text-slate-500">{formatDate(po.deliveryDate)}</td>
-                  <td className="px-5 py-3 text-slate-400">{formatDate(po.issuedAt)}</td>
-                  <td className="px-5 py-3">
-                    <Link to={`/purchase-orders/${po.id}`}
-                      className="text-xs font-medium text-blue-600 hover:underline">View</Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
+            {isLoading ? (
+              <TableSkeleton rows={8} cols={6} />
+            ) : isError ? (
+              <tbody><tr><td colSpan={6}><ErrorState onRetry={refetch} /></td></tr></tbody>
+            ) : !data?.content.length ? (
+              <tbody><tr><td colSpan={6}>
+                <EmptyState icon={Package} title="No purchase orders found"
+                  description={appliedKeyword ? 'Try adjusting your search.' : 'Create your first purchase order.'}
+                  action={{ label: 'New Order', onClick: () => navigate('/purchase-orders/new') }} />
+              </td></tr></tbody>
+            ) : (
+              <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
+                {data.content.map(po => (
+                  <tr key={po.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors">
+                    <td className="px-5 py-3.5">
+                      <Link to={`/purchase-orders/${po.id}`} className="font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400">{po.poNumber}</Link>
+                    </td>
+                    <td className="px-5 py-3.5 text-slate-600 dark:text-slate-400">{po.vendorName}</td>
+                    <td className="px-5 py-3.5"><StatusBadge status={po.status} /></td>
+                    <td className="px-5 py-3.5 font-medium text-slate-800 dark:text-slate-200">{formatCurrency(po.totalAmount, po.currency)}</td>
+                    <td className="px-5 py-3.5 text-slate-500 dark:text-slate-400">{po.currency}</td>
+                    <td className="px-5 py-3.5 text-slate-400 text-xs">{formatDate(po.createdAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            )}
           </table>
+        </div>
+        {data && data.totalPages > 1 && (
+          <div className="border-t border-slate-100 dark:border-slate-800 px-5 py-3">
+            <Pagination page={page} totalPages={data.totalPages} totalElements={data.totalElements} size={PAGE_SIZE} onPageChange={setPage} />
+          </div>
         )}
-      </div>
-
-      {data && (
-        <Pagination
-          page={data.number}
-          totalPages={data.totalPages}
-          totalElements={data.totalElements}
-          size={data.size}
-          onPageChange={setPage}
-        />
-      )}
+      </Card>
     </div>
   )
 }

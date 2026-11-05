@@ -130,3 +130,17 @@ export interface CreateInvoiceRequest {
   invoiceDate: string; dueDate?: string
   documentUrl?: string; notes?: string
 }
+
+// ── AI ───────────────────────────────────────────────────────────────────────
+export interface AiChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: Date
+}
+export interface AiSimilarVendor {
+  vendorId: number
+  vendorName: string
+  category: string
+  country: string
+  score: number
+}

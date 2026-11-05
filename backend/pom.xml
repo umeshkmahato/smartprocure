@@ -220,8 +220,7 @@
             <version>${tika.version}</version>
         </dependency>
 
-        <!--
-        ═══ Spring AI starters – uncomment in Phase 10 ═══
+        <!-- ═══ Spring AI – Phase 10 ═══ -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-model-ollama</artifactId>
@@ -230,7 +229,6 @@
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-vector-store-pgvector</artifactId>
         </dependency>
-        -->
 
         <!-- ═══ TESTING ═══ -->
         <dependency>
@@ -270,6 +268,18 @@
         </dependency>
 
     </dependencies>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <build>
         <plugins>

@@ -325,7 +325,7 @@ smartprocure/
 | **7 — Purchase Orders** | PO generation, delivery tracking | ✅ **Complete** |
 | **8 — Invoice Management** | Upload, PO matching, verification | ✅ **Complete** |
 | **9 — React Frontend** | All screens, routing, API integration | ✅ **Complete** |
-| **10 — Spring AI** | RAG, vendor recommendations, tool calling | ⏳ Pending |
+| **10 — Spring AI** | RAG, vendor recommendations, chat assistant, pgvector embeddings | ✅ **Complete** |
 | 11 — Virtual Threads | Throughput benchmarks vs platform threads | ⏳ Pending |
 | 12 — Kafka Events | Async notifications, retry, DLQ | ⏳ Pending |
 | 13 — Docker Deployment | Production containers, health checks | ⏳ Pending |

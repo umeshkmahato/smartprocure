@@ -7,6 +7,7 @@ import SortableHeader from '@/components/ui/SortableHeader'
 import Pagination from '@/components/ui/Pagination'
 import type { SortState } from '@/types'
 import { Plus, Search } from 'lucide-react'
+import AiRecommendations from '@/components/ai/AiRecommendations'
 
 export default function VendorsPage() {
   const qc = useQueryClient()
@@ -37,6 +38,8 @@ export default function VendorsPage() {
 
   return (
     <div className="space-y-5">
+      <AiRecommendations />
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Vendors</h1>

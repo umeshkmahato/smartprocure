@@ -5,11 +5,13 @@ import com.smartprocure.common.response.PageResponse;
 import com.smartprocure.purchaserequest.dto.*;
 import com.smartprocure.purchaserequest.entity.PurchaseRequestPriority;
 import com.smartprocure.purchaserequest.entity.PurchaseRequestStatus;
+import com.smartprocure.common.util.SortValidator;
 import com.smartprocure.purchaserequest.service.PurchaseRequestService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -37,6 +39,9 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/purchase-requests")
 @RequiredArgsConstructor
 public class PurchaseRequestController {
+
+    private static final Set<String> SORT_FIELDS =
+            Set.of("prNumber", "title", "status", "estimatedTotal", "requiredDate", "createdAt");
 
     private final PurchaseRequestService prService;
 
@@ -66,11 +71,13 @@ public class PurchaseRequestController {
             @RequestParam(required = false) PurchaseRequestPriority priority,
             @RequestParam(required = false) Long                    requesterId,
             @RequestParam(required = false) String                  search,
-            @RequestParam(defaultValue = "0")            int page,
-            @RequestParam(defaultValue = "20")           int size,
-            @RequestParam(defaultValue = "createdAt")    String sort) {
+            @RequestParam(defaultValue = "0")            int    page,
+            @RequestParam(defaultValue = "20")           int    size,
+            @RequestParam(defaultValue = "createdAt")    String sort,
+            @RequestParam(defaultValue = "desc")         String dir) {
 
-        var pageable = PageRequest.of(page, size, Sort.by(sort).descending());
+        SortValidator.validate(sort, SORT_FIELDS);
+        var pageable = PageRequest.of(page, size, Sort.by(SortValidator.direction(dir), sort));
         return ResponseEntity.ok(ApiResponse.success(
                 prService.search(status, priority, requesterId, search, pageable)));
     }

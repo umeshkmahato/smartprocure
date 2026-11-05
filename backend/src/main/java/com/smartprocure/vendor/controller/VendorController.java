@@ -10,12 +10,15 @@ import com.smartprocure.vendor.dto.VendorContactDto;
 import com.smartprocure.vendor.dto.VendorDto;
 import com.smartprocure.vendor.dto.VendorRatingDto;
 import com.smartprocure.vendor.entity.VendorStatus;
+import com.smartprocure.common.util.SortValidator;
 import com.smartprocure.vendor.service.VendorService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+
+import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -61,6 +64,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class VendorController {
 
+    private static final Set<String> SORT_FIELDS =
+            Set.of("name", "email", "country", "category", "status", "createdAt");
+
     private final VendorService vendorService;
 
     // ── Vendor CRUD ───────────────────────────────────────────────────────────
@@ -89,11 +95,14 @@ public class VendorController {
             @RequestParam(required = false) VendorStatus status,
             @RequestParam(required = false) Boolean      active,
             @RequestParam(required = false) String       search,
-            @RequestParam(defaultValue = "0")  int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "name") String sort) {
+            @RequestParam(defaultValue = "0")    int    page,
+            @RequestParam(defaultValue = "20")   int    size,
+            @RequestParam(defaultValue = "name") String sort,
+            @RequestParam(defaultValue = "asc")  String dir) {
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by(sort).ascending());
+        SortValidator.validate(sort, SORT_FIELDS);
+        Pageable pageable = PageRequest.of(page, size,
+                Sort.by(SortValidator.direction(dir), sort));
         return ResponseEntity.ok(
                 ApiResponse.success(vendorService.search(status, active, search, pageable)));
     }

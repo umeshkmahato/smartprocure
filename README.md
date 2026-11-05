@@ -34,7 +34,87 @@
 
 ## Quick Start
 
-### 1 — Clone and configure
+> **Two ways to run:** Docker (recommended — zero local setup) or manually with Maven + Node.
+
+---
+
+### Option A — Full Stack with Docker *(recommended)*
+
+#### Prerequisites
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) 24+ running
+
+#### 1 — Clone and configure
+
+```bash
+git clone https://github.com/your-org/smartprocure.git
+cd smartprocure
+```
+
+#### 2 — Start infrastructure (Postgres, Redis, Kafka, MailHog, Ollama)
+
+```bash
+docker compose -f docker-compose.yml up -d
+
+# Wait until all services show "healthy"
+docker compose -f docker-compose.yml ps
+```
+
+#### 3 — Pull AI models (first run only — can be skipped if not using AI features)
+
+```bash
+docker exec sp-ollama ollama pull llama3.2:8b
+docker exec sp-ollama ollama pull nomic-embed-text
+```
+
+#### 4 — Build & start backend + frontend
+
+```bash
+docker compose -f docker-compose.app.yml --env-file .env.docker up --build -d
+
+# Watch startup logs
+docker compose -f docker-compose.app.yml logs -f
+```
+
+#### 5 — Open the app
+
+| Service | URL | Notes |
+|---|---|---|
+| **Frontend (React)** | http://localhost:3000 | Login page |
+| **Backend API** | http://localhost:8080/api/v1 | REST API |
+| **Swagger UI** | http://localhost:8080/swagger-ui.html | Interactive docs |
+| **Health check** | http://localhost:8080/actuator/health | Should return `UP` |
+| **MailHog** | http://localhost:8025 | Dev email inbox |
+
+#### Default admin credentials
+
+```
+Email:    admin@smartprocure.internal
+Password: Admin@SmartProcure2025!
+```
+
+#### Rebuild after code changes
+
+```bash
+# Backend only
+docker compose -f docker-compose.app.yml --env-file .env.docker up --build -d backend
+
+# Frontend only
+docker compose -f docker-compose.app.yml --env-file .env.docker up --build -d frontend
+
+# Stop everything
+docker compose -f docker-compose.yml -f docker-compose.app.yml down
+
+# Full reset (wipes all data)
+docker compose -f docker-compose.yml -f docker-compose.app.yml down -v
+```
+
+> See **[DOCKER_GUIDE.md](./DOCKER_GUIDE.md)** for the full run, validate, rebuild, and troubleshooting guide.
+
+---
+
+### Option B — Manual (Backend + Frontend separately)
+
+#### 1 — Clone and configure
 
 ```bash
 git clone https://github.com/your-org/smartprocure.git
@@ -42,29 +122,38 @@ cd smartprocure
 cp .env.example .env          # edit values as needed
 ```
 
-### 2 — Start infrastructure
+#### 2 — Start infrastructure
 
 ```bash
-docker compose up -d
-docker compose ps              # wait until all services are healthy
+docker compose -f docker-compose.yml up -d
+docker compose -f docker-compose.yml ps   # wait until all services are healthy
 ```
 
-### 3 — Pull AI models (first run only)
+#### 3 — Pull AI models (first run only)
 
 ```bash
 docker exec sp-ollama ollama pull llama3.2:8b
 docker exec sp-ollama ollama pull nomic-embed-text
 ```
 
-### 4 — Start the backend
+#### 4 — Start the backend
 
 ```bash
 cd backend
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
+#### 5 — Start the frontend
+
+```bash
+cd frontend
+npm install
+npm run dev        # starts on http://localhost:3000
+```
+
 | Endpoint | URL |
 |---|---|
+| Frontend | http://localhost:3000 |
 | Swagger UI | http://localhost:8080/swagger-ui.html |
 | OpenAPI JSON | http://localhost:8080/api-docs |
 | Health | http://localhost:8080/actuator/health |
@@ -207,9 +296,35 @@ smartprocure/
 | **4 — Purchase Requests** | PR lifecycle, line items, status tracking | ✅ **Complete** |
 | **5 — Approval Workflow** | Multi-level thresholds, delegation, audit | ✅ **Complete** |
 | **6 — Quotation Comparison** | RFQ, vendor responses, comparison engine | ✅ **Complete** |
-| **7 — Purchase Orders** | PO generation, delivery tracking | 🔄 In Progress |
-| **8 — Invoice Management** | Upload, PO matching, verification | ⏳ Pending |
-| **9 — React Frontend** | All screens, routing, API integration | ⏳ Pending |
+
+### Phase 6 — Quotation API
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/v1/quotations/rfqs` | ADMIN, PROCUREMENT_OFFICER | Create RFQ |
+| PATCH | `/api/v1/quotations/rfqs/{id}/publish` | ADMIN, PROCUREMENT_OFFICER | Publish RFQ |
+| PATCH | `/api/v1/quotations/rfqs/{id}/close` | ADMIN, PROCUREMENT_OFFICER | Close RFQ |
+| POST | `/api/v1/quotations/rfqs/{id}/quotations` | VENDOR | Submit quotation |
+| GET | `/api/v1/quotations/rfqs/{id}/compare` | ADMIN, PROCUREMENT_OFFICER | Compare quotations |
+| POST | `/api/v1/quotations/rfqs/{id}/select/{qId}` | ADMIN, PROCUREMENT_OFFICER | Select winning quotation |
+
+### Phase 7 — Purchase Order API
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/v1/purchase-orders` | ADMIN, PROCUREMENT_OFFICER | Create PO (DRAFT) |
+| GET | `/api/v1/purchase-orders/{id}` | Authenticated | Get PO by id |
+| GET | `/api/v1/purchase-orders/number/{poNumber}` | Authenticated | Get PO by number |
+| GET | `/api/v1/purchase-orders` | Authenticated | Search / filter POs |
+| PUT | `/api/v1/purchase-orders/{id}` | ADMIN, PROCUREMENT_OFFICER | Update DRAFT PO |
+| PATCH | `/api/v1/purchase-orders/{id}/issue` | ADMIN, PROCUREMENT_OFFICER | Issue PO to vendor |
+| PATCH | `/api/v1/purchase-orders/{id}/acknowledge` | ADMIN, PROCUREMENT_OFFICER, VENDOR | Vendor acknowledges |
+| PATCH | `/api/v1/purchase-orders/{id}/deliver` | ADMIN, PROCUREMENT_OFFICER | Record delivery lines |
+| PATCH | `/api/v1/purchase-orders/{id}/cancel` | ADMIN, PROCUREMENT_OFFICER | Cancel DRAFT / ISSUED |
+| PATCH | `/api/v1/purchase-orders/{id}/close` | ADMIN, PROCUREMENT_OFFICER | Close after invoicing |
+| **7 — Purchase Orders** | PO generation, delivery tracking | ✅ **Complete** |
+| **8 — Invoice Management** | Upload, PO matching, verification | ✅ **Complete** |
+| **9 — React Frontend** | All screens, routing, API integration | ✅ **Complete** |
 | **10 — Spring AI** | RAG, vendor recommendations, tool calling | ⏳ Pending |
 | 11 — Virtual Threads | Throughput benchmarks vs platform threads | ⏳ Pending |
 | 12 — Kafka Events | Async notifications, retry, DLQ | ⏳ Pending |

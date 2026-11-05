@@ -1,0 +1,158 @@
+version: '3.8'
+# =============================================================================
+# SmartProcure – Full-Stack Application Compose
+# =============================================================================
+# Extends the base infrastructure (docker-compose.yml) with the backend API
+# and the React frontend served by Nginx.
+#
+# Usage (from project root):
+#
+#   1. Start infrastructure first (Postgres, Redis, Kafka, MailHog):
+#        docker compose -f docker-compose.yml up -d
+#
+#   2. Build & start the full application:
+#        docker compose -f docker-compose.app.yml --env-file .env.docker up --build -d
+#
+#   3. Tail logs:
+#        docker compose -f docker-compose.app.yml logs -f
+#
+#   4. Stop everything:
+#        docker compose -f docker-compose.yml -f docker-compose.app.yml down
+# =============================================================================
+
+services:
+
+  # ── Spring Boot Backend ──────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sp-backend
+    image: smartprocure/backend:local
+
+    # Wait for healthy Postgres and Redis before starting
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      SERVER_PORT: 8080
+
+      # ── Database (use container hostname, NOT localhost) ─────────────
+      DB_URL:       jdbc:postgresql://postgres:5432/smartprocure
+      DB_USERNAME:  ${DB_USERNAME:-smartprocure}
+      DB_PASSWORD:  ${DB_PASSWORD:-smartprocure_dev}
+      DB_POOL_MAX:  ${DB_POOL_MAX:-20}
+      DB_POOL_MIN:  ${DB_POOL_MIN:-5}
+
+      # ── Redis ──────────────────────────────────────────────────────────
+      REDIS_HOST:     redis
+      REDIS_PORT:     6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+
+      # ── Kafka ──────────────────────────────────────────────────────────
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      KAFKA_CONSUMER_GROUP:    ${KAFKA_CONSUMER_GROUP:-sp-main-group}
+
+      # ── JWT ────────────────────────────────────────────────────────────
+      JWT_SECRET:          ${JWT_SECRET:-bXktc3VwZXItc2VjcmV0LWtleS1mb3Itc21hcnRwcm9jdXJlLWFwcC0yMDI1LW11c3QtYmUtYXQtbGVhc3QtMjU2LWJpdHM=}
+      JWT_ACCESS_EXPIRY:   ${JWT_ACCESS_EXPIRY:-900}
+      JWT_REFRESH_EXPIRY:  ${JWT_REFRESH_EXPIRY:-604800}
+
+      # ── CORS (allow requests from the frontend container) ───────────────
+      CORS_ALLOWED_ORIGINS: http://localhost:${FRONTEND_PORT:-3000}
+
+      # ── Mail (MailHog) ─────────────────────────────────────────────────
+      MAIL_HOST:     mailhog
+      MAIL_PORT:     1025
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_AUTH:     false
+      MAIL_TLS:      false
+
+      # ── File upload ────────────────────────────────────────────────────
+      INVOICE_UPLOAD_DIR: /app/uploads/invoices
+      MAX_FILE_SIZE:      ${MAX_FILE_SIZE:-10MB}
+      MAX_REQUEST_SIZE:   ${MAX_REQUEST_SIZE:-10MB}
+
+      # ── Ollama (optional — comment out if not using AI) ────────────────
+      OLLAMA_BASE_URL:   http://ollama:11434
+      OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-llama3.2:8b}
+      OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
+      AI_TIMEOUT:        ${AI_TIMEOUT:-30}
+
+      # ── Admin seed account ─────────────────────────────────────────────
+      ADMIN_EMAIL:    ${ADMIN_EMAIL:-admin@smartprocure.internal}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin@SmartProcure2025!}
+
+    volumes:
+      - invoice-uploads:/app/uploads/invoices
+      - backend-logs:/app/logs
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+    networks:
+      - sp-network
+
+    restart: unless-stopped
+
+  # ── React Frontend (Nginx) ───────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: sp-frontend
+    image: smartprocure/frontend:local
+
+    depends_on:
+      backend:
+        condition: service_healthy
+
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:80 || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    networks:
+      - sp-network
+
+    restart: unless-stopped
+
+# =============================================================================
+volumes:
+  invoice-uploads:
+  backend-logs:
+  # Reference the volumes already declared in docker-compose.yml
+  postgres-data:
+    external: true
+  redis-data:
+    external: true
+  zookeeper-data:
+    external: true
+  zookeeper-log:
+    external: true
+  kafka-data:
+    external: true
+
+networks:
+  sp-network:
+    external: true
+    name: sp-network

@@ -4,11 +4,13 @@ import com.smartprocure.common.response.ApiResponse;
 import com.smartprocure.common.response.PageResponse;
 import com.smartprocure.quotation.dto.*;
 import com.smartprocure.quotation.entity.QuotationRequestStatus;
+import com.smartprocure.common.util.SortValidator;
 import com.smartprocure.quotation.service.QuotationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -39,6 +41,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class QuotationController {
 
+    private static final Set<String> SORT_FIELDS =
+            Set.of("rfqNumber", "title", "status", "deadline", "createdAt");
+
     private final QuotationService quotationService;
 
     // ── RFQ CRUD ──────────────────────────────────────────────────────────────
@@ -62,9 +67,12 @@ public class QuotationController {
     public ResponseEntity<ApiResponse<PageResponse<QuotationRequestDto>>> search(
             @RequestParam(required = false) QuotationRequestStatus status,
             @RequestParam(required = false) String search,
-            @RequestParam(defaultValue = "0")  int page,
-            @RequestParam(defaultValue = "20") int size) {
-        var pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+            @RequestParam(defaultValue = "0")            int    page,
+            @RequestParam(defaultValue = "20")           int    size,
+            @RequestParam(defaultValue = "createdAt")    String sort,
+            @RequestParam(defaultValue = "desc")         String dir) {
+        SortValidator.validate(sort, SORT_FIELDS);
+        var pageable = PageRequest.of(page, size, Sort.by(SortValidator.direction(dir), sort));
         return ResponseEntity.ok(ApiResponse.success(
                 quotationService.searchRfqs(status, search, pageable)));
     }

@@ -4,6 +4,7 @@ import com.smartprocure.approval.dto.*;
 import com.smartprocure.approval.service.ApprovalWorkflowService;
 import com.smartprocure.common.response.ApiResponse;
 import com.smartprocure.common.response.PageResponse;
+import com.smartprocure.common.util.SortValidator;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -15,6 +16,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * REST API for the multi-level Approval Workflow.
@@ -38,6 +40,9 @@ import java.util.List;
 @RequestMapping("/api/v1/approvals")
 @RequiredArgsConstructor
 public class ApprovalWorkflowController {
+
+    private static final Set<String> SORT_FIELDS =
+            Set.of("createdAt", "actionedAt", "level", "status");
 
     private final ApprovalWorkflowService approvalService;
 
@@ -80,11 +85,14 @@ public class ApprovalWorkflowController {
     @GetMapping("/my/pending")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PageResponse<ApprovalRequestDto>>> myPending(
-            @RequestParam(defaultValue = "0")  int page,
-            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "0")          int    page,
+            @RequestParam(defaultValue = "20")         int    size,
+            @RequestParam(defaultValue = "createdAt")  String sort,
+            @RequestParam(defaultValue = "asc")        String dir,
             Authentication auth) {
 
-        var pageable = PageRequest.of(page, size, Sort.by("createdAt").ascending());
+        SortValidator.validate(sort, SORT_FIELDS);
+        var pageable = PageRequest.of(page, size, Sort.by(SortValidator.direction(dir), sort));
         return ResponseEntity.ok(ApiResponse.success(
                 approvalService.myPendingApprovals(auth, pageable)));
     }
@@ -92,11 +100,14 @@ public class ApprovalWorkflowController {
     @GetMapping("/my/history")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PageResponse<ApprovalRequestDto>>> myHistory(
-            @RequestParam(defaultValue = "0")  int page,
-            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "0")           int    page,
+            @RequestParam(defaultValue = "20")          int    size,
+            @RequestParam(defaultValue = "actionedAt")  String sort,
+            @RequestParam(defaultValue = "desc")        String dir,
             Authentication auth) {
 
-        var pageable = PageRequest.of(page, size, Sort.by("actionedAt").descending());
+        SortValidator.validate(sort, SORT_FIELDS);
+        var pageable = PageRequest.of(page, size, Sort.by(SortValidator.direction(dir), sort));
         return ResponseEntity.ok(ApiResponse.success(
                 approvalService.myApprovalHistory(auth, pageable)));
     }

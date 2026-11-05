@@ -1,0 +1,17 @@
+{
+  "resources": {
+    "includes": [
+      { "pattern": "application\\.yml" },
+      { "pattern": "application-.*\\.yml" },
+      { "pattern": "logback-spring\\.xml" },
+      { "pattern": "logback\\.xml" },
+      { "pattern": "META-INF/spring\\.factories" },
+      { "pattern": "META-INF/spring/.*\\.imports" },
+      { "pattern": "META-INF/services/.*" },
+      { "pattern": "META-INF/MANIFEST\\.MF" },
+      { "pattern": "org/springframework/boot/logging/logback/.*" },
+      { "pattern": "org/springframework/kafka/.*" }
+    ]
+  },
+  "bundles": []
+}

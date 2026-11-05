@@ -12,6 +12,8 @@ import com.smartprocure.purchaseorder.entity.PurchaseOrderStatus;
 import com.smartprocure.purchaseorder.repository.PurchaseOrderRepository;
 import com.smartprocure.vendor.entity.Vendor;
 import com.smartprocure.vendor.repository.VendorRepository;
+import com.smartprocure.events.InvoiceVerifiedEvent;
+import com.smartprocure.events.KafkaEventPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
@@ -29,6 +31,7 @@ public class InvoiceService {
     private final InvoiceRepository       invoiceRepository;
     private final PurchaseOrderRepository poRepository;
     private final VendorRepository        vendorRepository;
+    private final KafkaEventPublisher     eventPublisher;
 
     // ── Create ────────────────────────────────────────────────────────────────
 
@@ -154,8 +157,16 @@ public class InvoiceService {
         po.setStatus(PurchaseOrderStatus.INVOICED);
         poRepository.save(po);
 
+        Invoice verifiedInvoice = invoiceRepository.save(invoice);
+        eventPublisher.publishInvoiceVerified(
+                InvoiceVerifiedEvent.of(
+                        verifiedInvoice.getId(), verifiedInvoice.getInvoiceNumber(),
+                        po.getId(), po.getPoNumber(),
+                        po.getVendor().getId(), po.getVendor().getName(),
+                        po.getVendor().getEmail(),
+                        verifiedInvoice.getTotalAmount(), verifiedInvoice.getCurrency()));
         log.info("Invoice verified: id={}, poId={}", id, po.getId());
-        return InvoiceDto.fromEntity(invoiceRepository.save(invoice));
+        return InvoiceDto.fromEntity(verifiedInvoice);
     }
 
     @Transactional

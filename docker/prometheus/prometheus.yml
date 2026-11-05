@@ -5,22 +5,46 @@ global:
     app: smartprocure
     environment: local
 
+# ── Alert rules ──────────────────────────────────────────────────────────────
+# alert-rules.yml lives next to this file; mounted read-only into the container.
+rule_files:
+  - "alert-rules.yml"
+
+# ── Alertmanager (optional — uncomment if running Alertmanager) ───────────────
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: ['alertmanager:9093']
+
 scrape_configs:
 
+  # ── Backend API ─────────────────────────────────────────────────────────────
+  # Both Prometheus and the backend run on sp-network, so we use the Docker
+  # service/container hostname directly — no host.docker.internal needed and
+  # this works identically on Mac, Windows, and Linux.
   - job_name: 'smartprocure-backend'
     metrics_path: '/actuator/prometheus'
     static_configs:
-      # host.docker.internal resolves to the Docker host on Mac/Windows.
-      # On Linux replace with: 172.17.0.1 (default Docker bridge gateway).
-      - targets: ['host.docker.internal:8080']
+      - targets: ['sp-backend:8080']
     relabel_configs:
       - target_label: instance
         replacement: 'smartprocure-backend'
 
+  # ── Notification Service ─────────────────────────────────────────────────────
+  - job_name: 'smartprocure-notification'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['sp-notification:8081']
+    relabel_configs:
+      - target_label: instance
+        replacement: 'smartprocure-notification'
+
+  # ── Prometheus self-monitoring ───────────────────────────────────────────────
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
 
+  # ── OTel Collector metrics ───────────────────────────────────────────────────
   - job_name: 'otel-collector'
     static_configs:
       - targets: ['otel-collector:8889']

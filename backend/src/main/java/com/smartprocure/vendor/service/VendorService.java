@@ -16,6 +16,8 @@ import com.smartprocure.vendor.entity.Vendor;
 import com.smartprocure.vendor.entity.VendorContact;
 import com.smartprocure.vendor.entity.VendorRating;
 import com.smartprocure.vendor.entity.VendorStatus;
+import com.smartprocure.events.KafkaEventPublisher;
+import com.smartprocure.events.VendorApprovedEvent;
 import com.smartprocure.vendor.repository.VendorContactRepository;
 import com.smartprocure.vendor.repository.VendorRatingRepository;
 import com.smartprocure.vendor.repository.VendorRepository;
@@ -51,6 +53,7 @@ public class VendorService {
     private final VendorContactRepository contactRepository;
     private final VendorRatingRepository  ratingRepository;
     private final UserRepository          userRepository;
+    private final KafkaEventPublisher     eventPublisher;
 
     // ── Vendor CRUD ───────────────────────────────────────────────────────────
 
@@ -154,8 +157,12 @@ public class VendorService {
         }
         vendor.setStatus(VendorStatus.APPROVED);
         vendor.setActive(true);
+        Vendor saved = vendorRepository.save(vendor);
+        eventPublisher.publishVendorApproved(
+                VendorApprovedEvent.of(saved.getId(), saved.getName(),
+                        saved.getEmail(), "system"));
         log.info("Vendor approved: id={}", id);
-        return VendorDto.fromEntity(vendorRepository.save(vendor));
+        return VendorDto.fromEntity(saved);
     }
 
     /**

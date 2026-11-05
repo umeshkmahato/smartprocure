@@ -15,6 +15,8 @@ import com.smartprocure.user.entity.User;
 import com.smartprocure.user.repository.UserRepository;
 import com.smartprocure.vendor.entity.Vendor;
 import com.smartprocure.vendor.repository.VendorRepository;
+import com.smartprocure.events.KafkaEventPublisher;
+import com.smartprocure.events.PurchaseOrderIssuedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
@@ -38,6 +40,7 @@ public class PurchaseOrderService {
     private final UserRepository              userRepository;
     private final PurchaseRequestRepository   prRepository;
     private final QuotationRepository         quotationRepository;
+    private final KafkaEventPublisher         eventPublisher;
 
     private static final AtomicLong SEQ = new AtomicLong(0);
 
@@ -162,9 +165,16 @@ public class PurchaseOrderService {
         po.setStatus(PurchaseOrderStatus.ISSUED);
         po.setIssuedAt(LocalDateTime.now());
         po.setIssuedBy(resolveUser(auth.getName()));
-
-        log.info("PO issued: id={}, poNumber={}", id, po.getPoNumber());
-        return PurchaseOrderDto.fromEntity(poRepository.save(po));
+        PurchaseOrder saved = poRepository.save(po);
+        eventPublisher.publishPoIssued(
+                PurchaseOrderIssuedEvent.of(
+                        saved.getId(), saved.getPoNumber(),
+                        saved.getVendor().getId(), saved.getVendor().getName(),
+                        saved.getVendor().getEmail(),
+                        saved.getTotalAmount(), saved.getCurrency(),
+                        auth.getName()));
+        log.info("PO issued: id={}, poNumber={}", id, saved.getPoNumber());
+        return PurchaseOrderDto.fromEntity(saved);
     }
 
     @Transactional

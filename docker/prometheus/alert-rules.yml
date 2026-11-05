@@ -1,0 +1,223 @@
+groups:
+
+  # ══════════════════════════════════════════════════════════════════════════
+  #  GROUP 1 — HTTP / API Health
+  # ══════════════════════════════════════════════════════════════════════════
+  - name: smartprocure.http
+    interval: 30s
+    rules:
+
+      - alert: HighHttpErrorRate
+        expr: |
+          sum(rate(http_server_requests_seconds_count{application="smartprocure-backend",status=~"5.."}[5m]))
+          /
+          sum(rate(http_server_requests_seconds_count{application="smartprocure-backend"}[5m]))
+          > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "HTTP 5xx error rate above 5%"
+          description: "{{ $value | humanizePercentage }} of requests are returning 5xx over the last 5 minutes."
+          runbook: "https://wiki.internal/runbooks/high-error-rate"
+
+      - alert: HighP95Latency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_server_requests_seconds_bucket{application="smartprocure-backend"}[5m])) by (le)
+          ) > 1.0
+        for: 3m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "HTTP p95 latency exceeds 1 second"
+          description: "p95 response time is {{ $value | humanizeDuration }} — investigate slow endpoints or DB bottlenecks."
+
+      - alert: BackendDown
+        expr: up{job="smartprocure-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "SmartProcure backend is unreachable"
+          description: "Prometheus cannot scrape the backend at {{ $labels.instance }}. Pod may have crashed."
+
+      - alert: HighRequestRate
+        expr: |
+          sum(rate(http_server_requests_seconds_count{application="smartprocure-backend"}[1m])) > 200
+        for: 2m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Unusually high request rate (> 200 req/s)"
+          description: "Current rate: {{ $value | humanize }} req/s. Possible traffic spike or load-test running."
+
+  # ══════════════════════════════════════════════════════════════════════════
+  #  GROUP 2 — JVM Health
+  # ══════════════════════════════════════════════════════════════════════════
+  - name: smartprocure.jvm
+    interval: 30s
+    rules:
+
+      - alert: JvmHeapPressureHigh
+        expr: |
+          (
+            sum(jvm_memory_used_bytes{application="smartprocure-backend", area="heap"})
+            /
+            sum(jvm_memory_max_bytes{application="smartprocure-backend", area="heap"})
+          ) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "JVM heap usage above 85%"
+          description: "Heap utilisation is {{ $value | humanizePercentage }}. OOM risk — consider increasing -Xmx or investigating leaks."
+
+      - alert: JvmHeapCritical
+        expr: |
+          (
+            sum(jvm_memory_used_bytes{application="smartprocure-backend", area="heap"})
+            /
+            sum(jvm_memory_max_bytes{application="smartprocure-backend", area="heap"})
+          ) > 0.95
+        for: 2m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "JVM heap usage above 95% — OOM imminent"
+          description: "Heap at {{ $value | humanizePercentage }}. Pod likely to restart with OutOfMemoryError."
+
+      - alert: GcPauseRateHigh
+        expr: |
+          rate(jvm_gc_pause_seconds_sum{application="smartprocure-backend"}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "GC pause time exceeding 10% of wall-clock"
+          description: "GC is consuming {{ $value | humanizePercentage }} of time. Throughput is degraded."
+
+  # ══════════════════════════════════════════════════════════════════════════
+  #  GROUP 3 — Database Connection Pool
+  # ══════════════════════════════════════════════════════════════════════════
+  - name: smartprocure.db
+    interval: 30s
+    rules:
+
+      - alert: HikariPoolExhausted
+        expr: |
+          hikaricp_connections_pending{application="smartprocure-backend"} > 5
+        for: 2m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "HikariCP connection pool is exhausted"
+          description: "{{ $value }} threads are waiting for a DB connection. Increase pool size or investigate slow queries."
+
+      - alert: HikariPoolUsageHigh
+        expr: |
+          hikaricp_connections_active{application="smartprocure-backend"}
+          /
+          hikaricp_connections_max{application="smartprocure-backend"}
+          > 0.80
+        for: 3m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "HikariCP pool utilisation above 80%"
+          description: "{{ $value | humanizePercentage }} of DB connections in use."
+
+      - alert: SlowDbConnectionAcquire
+        expr: |
+          histogram_quantile(0.95,
+            rate(hikaricp_connection_acquire_seconds_bucket{application="smartprocure-backend"}[5m])
+          ) > 0.5
+        for: 3m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "DB connection acquire p95 > 500 ms"
+          description: "Threads are spending {{ $value | humanizeDuration }} waiting for a DB connection."
+
+  # ══════════════════════════════════════════════════════════════════════════
+  #  GROUP 4 — Kafka
+  # ══════════════════════════════════════════════════════════════════════════
+  - name: smartprocure.kafka
+    interval: 30s
+    rules:
+
+      - alert: KafkaDlqEventsRising
+        expr: |
+          increase(smartprocure_kafka_events_dlq_total[10m]) > 3
+        for: 0m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "Kafka DLQ is receiving events"
+          description: "{{ $value }} events landed in the DLQ in the last 10 minutes. Consumer may be failing."
+
+      - alert: KafkaEventConsumerStalled
+        expr: |
+          rate(smartprocure_kafka_events_consumed_total[5m]) == 0
+          and
+          rate(smartprocure_kafka_events_published_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Kafka consumer has stalled while producer is active"
+          description: "Events are being published but none consumed. Check notification-service consumer group."
+
+  # ══════════════════════════════════════════════════════════════════════════
+  #  GROUP 5 — Business / Procurement KPIs
+  # ══════════════════════════════════════════════════════════════════════════
+  - name: smartprocure.business
+    interval: 60s
+    rules:
+
+      - alert: HighInvoiceDisputeRate
+        expr: |
+          increase(smartprocure_invoices_disputed_total[1h]) > 10
+        for: 0m
+        labels:
+          severity: warning
+          team: finance
+        annotations:
+          summary: "High invoice dispute volume in last hour"
+          description: "{{ $value }} invoices disputed in 1 hour — may indicate a vendor data quality issue."
+
+      - alert: LoginFailureSpike
+        expr: |
+          rate(smartprocure_auth_login_failure_total[5m]) > 1
+        for: 2m
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "Elevated login failure rate — possible brute-force"
+          description: "{{ $value | humanize }} failed logins/s detected. Review IP source and consider rate-limit tightening."
+
+      - alert: AiChatLatencyDegraded
+        expr: |
+          histogram_quantile(0.95,
+            rate(smartprocure_ai_chat_latency_seconds_bucket[5m])
+          ) > 30
+        for: 3m
+        labels:
+          severity: warning
+          team: ai
+        annotations:
+          summary: "AI chat p95 latency > 30 s"
+          description: "Ollama may be overloaded or the model is too large for available VRAM."

@@ -1,24 +1,125 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<configuration>
+<configuration scan="true" scanPeriod="30 seconds">
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
-    <springProperty name="APP_NAME" source="spring.application.name" defaultValue="smartprocure"/>
 
-    <!-- ── Plain-text console (dev / test / default) ─────────────────────── -->
+    <!-- ── Application properties ────────────────────────────────────────── -->
+    <springProperty name="APP_NAME"    source="spring.application.name"    defaultValue="smartprocure"/>
+    <springProperty name="LOG_PATH"    source="logging.file.path"           defaultValue="./logs"/>
+    <springProperty name="ACTIVE_ENV"  source="spring.profiles.active"      defaultValue="default"/>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         APPENDERS
+    ═══════════════════════════════════════════════════════════════════════ -->
+
+    <!-- ── 1. Plain-text console (dev / test / default) ──────────────────── -->
     <appender name="CONSOLE_PLAIN" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{HH:mm:ss.SSS} [%thread] [%X{correlationId:-}] %-5level %logger{36} - %msg%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{correlationId:--}] [%X{traceId:--}] %-5level %logger{40} - %msg%n</pattern>
+            <charset>UTF-8</charset>
         </encoder>
     </appender>
 
-    <!-- ── Structured JSON console (production) ──────────────────────────── -->
+    <!-- ── 2. Structured JSON console (production / staging) ─────────────── -->
     <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-            <customFields>{"app":"${APP_NAME}"}</customFields>
+            <customFields>{"app":"${APP_NAME}","env":"${ACTIVE_ENV}"}</customFields>
+            <!-- MDC fields propagated from filters -->
             <includeMdcKeyName>correlationId</includeMdcKeyName>
             <includeMdcKeyName>traceId</includeMdcKeyName>
             <includeMdcKeyName>spanId</includeMdcKeyName>
+            <includeMdcKeyName>userId</includeMdcKeyName>
+            <includeMdcKeyName>requestPath</includeMdcKeyName>
+            <includeMdcKeyName>httpMethod</includeMdcKeyName>
+            <includeMdcKeyName>userAgent</includeMdcKeyName>
+            <!-- Shorter class names, include exception stack -->
+            <shortenedLoggerNameLength>36</shortenedLoggerNameLength>
+            <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
+                <maxDepthPerCause>8</maxDepthPerCause>
+                <maxLength>4096</maxLength>
+                <rootCauseFirst>true</rootCauseFirst>
+            </throwableConverter>
         </encoder>
     </appender>
+
+    <!-- ── 3. Rolling file — all levels (prod) ───────────────────────────── -->
+    <appender name="FILE_JSON" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/${APP_NAME}.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- daily rollover, keep 30 days, cap total at 2 GB -->
+            <fileNamePattern>${LOG_PATH}/${APP_NAME}.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>100MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>2GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <customFields>{"app":"${APP_NAME}","env":"${ACTIVE_ENV}"}</customFields>
+            <includeMdcKeyName>correlationId</includeMdcKeyName>
+            <includeMdcKeyName>traceId</includeMdcKeyName>
+            <includeMdcKeyName>spanId</includeMdcKeyName>
+            <includeMdcKeyName>userId</includeMdcKeyName>
+            <includeMdcKeyName>requestPath</includeMdcKeyName>
+            <includeMdcKeyName>httpMethod</includeMdcKeyName>
+        </encoder>
+    </appender>
+
+    <!-- ── 4. Rolling file — ERROR only (prod) ───────────────────────────── -->
+    <appender name="FILE_ERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/${APP_NAME}-error.log</file>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>ERROR</level>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/${APP_NAME}-error.%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+            <maxHistory>90</maxHistory>
+            <totalSizeCap>500MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <customFields>{"app":"${APP_NAME}","env":"${ACTIVE_ENV}","stream":"error"}</customFields>
+            <includeMdcKeyName>correlationId</includeMdcKeyName>
+            <includeMdcKeyName>traceId</includeMdcKeyName>
+            <includeMdcKeyName>spanId</includeMdcKeyName>
+            <includeMdcKeyName>userId</includeMdcKeyName>
+            <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
+                <maxDepthPerCause>20</maxDepthPerCause>
+                <rootCauseFirst>true</rootCauseFirst>
+            </throwableConverter>
+        </encoder>
+    </appender>
+
+    <!-- ── 5. Async wrappers (non-blocking I/O for file appenders) ────────── -->
+    <appender name="ASYNC_FILE_JSON" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>1024</queueSize>
+        <discardingThreshold>0</discardingThreshold>  <!-- never discard -->
+        <includeCallerData>false</includeCallerData>
+        <appender-ref ref="FILE_JSON"/>
+    </appender>
+
+    <appender name="ASYNC_FILE_ERROR" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>256</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <includeCallerData>true</includeCallerData>   <!-- full caller info for errors -->
+        <appender-ref ref="FILE_ERROR"/>
+    </appender>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         LOGGER OVERRIDES  (suppress noisy frameworks)
+    ═══════════════════════════════════════════════════════════════════════ -->
+    <logger name="org.apache.kafka"                      level="WARN"/>
+    <logger name="org.apache.kafka.clients"              level="WARN"/>
+    <logger name="org.hibernate.SQL"                     level="WARN"/>
+    <logger name="org.hibernate.orm.jdbc.bind"           level="WARN"/>
+    <logger name="com.zaxxer.hikari"                     level="WARN"/>
+    <logger name="io.lettuce"                            level="WARN"/>
+    <logger name="org.springframework.web"               level="WARN"/>
+    <logger name="org.springframework.kafka"             level="INFO"/>
+    <logger name="io.micrometer"                         level="WARN"/>
+    <logger name="org.flywaydb"                          level="INFO"/>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         PROFILES
+    ═══════════════════════════════════════════════════════════════════════ -->
 
     <!-- ── Default root (no active profile) ──────────────────────────────── -->
     <root level="INFO">
@@ -28,7 +129,7 @@
         <appender-ref ref="CONSOLE_PLAIN"/>
     </logger>
 
-    <!-- ── dev + test: verbose plain text ────────────────────────────────── -->
+    <!-- ── dev + test: verbose plain-text console ────────────────────────── -->
     <springProfile name="dev,test">
         <root level="INFO">
             <appender-ref ref="CONSOLE_PLAIN"/>
@@ -39,14 +140,25 @@
         <logger name="org.springframework.security" level="DEBUG" additivity="false">
             <appender-ref ref="CONSOLE_PLAIN"/>
         </logger>
+        <logger name="org.hibernate.SQL" level="DEBUG" additivity="false">
+            <appender-ref ref="CONSOLE_PLAIN"/>
+        </logger>
     </springProfile>
 
-    <!-- ── prod: structured JSON (overrides default root) ───────────────── -->
+    <!-- ── prod: JSON console + async JSON file + async error file ────────── -->
     <springProfile name="prod">
         <root level="INFO">
             <appender-ref ref="CONSOLE_JSON"/>
+            <appender-ref ref="ASYNC_FILE_JSON"/>
+            <appender-ref ref="ASYNC_FILE_ERROR"/>
         </root>
         <logger name="com.smartprocure" level="INFO" additivity="false">
+            <appender-ref ref="CONSOLE_JSON"/>
+            <appender-ref ref="ASYNC_FILE_JSON"/>
+            <appender-ref ref="ASYNC_FILE_ERROR"/>
+        </logger>
+        <!-- Silence verbose security debug in prod -->
+        <logger name="org.springframework.security" level="WARN" additivity="false">
             <appender-ref ref="CONSOLE_JSON"/>
         </logger>
     </springProfile>

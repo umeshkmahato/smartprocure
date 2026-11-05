@@ -1,0 +1,7 @@
+[
+  ["org.springframework.kafka.listener.MessageListener"],
+  ["org.springframework.kafka.listener.AcknowledgingMessageListener"],
+  ["org.springframework.kafka.listener.ConsumerSeekAware"],
+  ["org.springframework.retry.annotation.Retryable"],
+  ["org.springframework.scheduling.annotation.Async"]
+]

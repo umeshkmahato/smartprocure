@@ -1,0 +1,8 @@
+[
+  { "name": "com.smartprocure.notification.model.VendorApprovedEvent" },
+  { "name": "com.smartprocure.notification.model.PurchaseOrderIssuedEvent" },
+  { "name": "com.smartprocure.notification.model.InvoiceVerifiedEvent" },
+  { "name": "java.time.Instant" },
+  { "name": "java.time.LocalDateTime" },
+  { "name": "java.util.UUID" }
+]

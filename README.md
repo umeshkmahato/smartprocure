@@ -326,12 +326,12 @@ smartprocure/
 | **8 — Invoice Management** | Upload, PO matching, verification | ✅ **Complete** |
 | **9 — React Frontend** | All screens, routing, API integration | ✅ **Complete** |
 | **10 — Spring AI** | RAG, vendor recommendations, chat assistant, pgvector embeddings | ✅ **Complete** |
-| 11 — Virtual Threads | Throughput benchmarks vs platform threads | ⏳ Pending |
-| 12 — Kafka Events | Async notifications, retry, DLQ | ⏳ Pending |
-| 13 — Docker Deployment | Production containers, health checks | ⏳ Pending |
-| 14 — Observability | Grafana dashboards, OTel tracing, alerts | ⏳ Pending |
-| 15 — GraalVM Native | Notification Service native executable | ⏳ Pending |
-| 16 — Final Validation | Security audit, performance tests, go/no-go | ⏳ Pending |
+| **11 — Virtual Threads** | Throughput benchmarks vs platform threads | ✅ **Complete** |
+| **12 — Kafka Events** | Async notifications, retry, DLQ | ✅ **Complete** |
+| **13 — Docker Deployment** | Production containers, health checks | ✅ **Complete** |
+| **14 — Observability** | Structured logging, Micrometer counters, Grafana dashboards, alert rules | ✅ **Complete** |
+| **15 — GraalVM Native** | Native hints, `Dockerfile.native`, distroless runtime image | ✅ **Complete** |
+| **16 — Final Validation** | k6 load tests, E2E integration test, `SECURITY_AUDIT.md`, `PERFORMANCE_REPORT.md` | ✅ **Complete** |
 
 ---
 

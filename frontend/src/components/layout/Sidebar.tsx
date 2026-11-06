@@ -114,7 +114,12 @@ function NavItemRow({ item, collapsed, depth = 0 }: { item: NavItem; collapsed: 
   )
 }
 
-export default function Sidebar() {
+interface SidebarProps {
+  mobileOpen?: boolean
+  onMobileClose?: () => void
+}
+
+export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false)
   const clear = useAuthStore((s) => s.clear)
 
@@ -123,7 +128,11 @@ export default function Sidebar() {
       className={cn(
         'fixed left-0 top-0 z-30 flex h-screen flex-col bg-slate-900',
         'border-r border-white/[0.08] transition-all duration-300 ease-in-out',
-        collapsed ? 'w-16' : 'w-60',
+        // Desktop: always visible, collapsible
+        'hidden lg:flex',
+        collapsed ? 'lg:w-16' : 'lg:w-60',
+        // Mobile: slide-in drawer overlay
+        mobileOpen && 'flex w-72 lg:flex',
       )}
       aria-label="Main navigation"
     >
@@ -165,6 +174,16 @@ export default function Sidebar() {
 
       {/* Sign out + collapse */}
       <div className="shrink-0 space-y-0.5 border-t border-white/[0.08] p-2">
+        {/* Mobile close button */}
+        {onMobileClose && (
+          <button
+            onClick={onMobileClose}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-white/[0.08] transition-colors duration-150 lg:hidden"
+          >
+            <PanelLeftClose className="h-4 w-4 shrink-0" />
+            <span className="font-medium">Close menu</span>
+          </button>
+        )}
         <button
           onClick={clear}
           className={cn(
@@ -176,10 +195,11 @@ export default function Sidebar() {
           <LogOut className="h-4 w-4 shrink-0" />
           {!collapsed && <span className="font-medium">Sign out</span>}
         </button>
+        {/* Desktop collapse toggle */}
         <button
           onClick={() => setCollapsed((c) => !c)}
           className={cn(
-            'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-500',
+            'hidden lg:flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-500',
             'hover:text-white hover:bg-white/[0.08] transition-colors duration-150',
             collapsed && 'justify-center px-2',
           )}

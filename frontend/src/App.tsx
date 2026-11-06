@@ -19,6 +19,8 @@ import CreatePurchaseOrderPage from '@/pages/purchaseOrders/CreatePurchaseOrderP
 import InvoicesPage from '@/pages/invoices/InvoicesPage'
 import InvoiceDetailPage from '@/pages/invoices/InvoiceDetailPage'
 import CreateInvoicePage from '@/pages/invoices/CreateInvoicePage'
+import ProfilePage from '@/pages/profile/ProfilePage'
+import SettingsPage from '@/pages/settings/SettingsPage'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.accessToken)
@@ -63,6 +65,10 @@ export default function App() {
         <Route path="/invoices"       element={<InvoicesPage />} />
         <Route path="/invoices/new"   element={<CreateInvoicePage />} />
         <Route path="/invoices/:id"   element={<InvoiceDetailPage />} />
+
+        {/* Profile & Settings */}
+        <Route path="/profile"   element={<ProfilePage />} />
+        <Route path="/settings"  element={<SettingsPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -34,14 +34,54 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-6 py-12">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 flex items-center gap-2">
+    <div className="min-h-screen flex">
+      {/* Left branding panel — mirrors LoginPage */}
+      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between bg-slate-900 p-12 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-violet-600/20 via-transparent to-blue-600/20 pointer-events-none" />
+        <div className="relative flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600">
+            <Zap className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <span className="text-lg font-bold text-white tracking-tight">SmartProcure</span>
+            <span className="ml-2 text-xs text-slate-400 uppercase tracking-widest">Enterprise</span>
+          </div>
+        </div>
+        <div className="relative space-y-6">
+          <div>
+            <h2 className="text-3xl font-bold text-white leading-tight">
+              Join your team<br />in minutes.
+            </h2>
+            <p className="mt-3 text-slate-400 text-base leading-relaxed max-w-sm">
+              Create your account and start managing procurement workflows with AI-powered insights.
+            </p>
+          </div>
+          <div className="space-y-3 max-w-sm">
+            {[
+              { icon: '✦', text: 'Automated approval workflows' },
+              { icon: '✦', text: 'Real-time vendor comparison' },
+              { icon: '✦', text: 'AI-powered spend analytics' },
+              { icon: '✦', text: 'End-to-end audit trail' },
+            ].map(f => (
+              <div key={f.text} className="flex items-center gap-3 text-sm text-slate-300">
+                <span className="text-blue-400 text-xs">{f.icon}</span>
+                {f.text}
+              </div>
+            ))}
+          </div>
+        </div>
+        <p className="relative text-xs text-slate-500">© {new Date().getFullYear()} SmartProcure. All rights reserved.</p>
+      </div>
+
+      {/* Right form panel */}
+      <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 bg-slate-50 dark:bg-slate-950 overflow-y-auto">
+        <div className="mb-6 flex items-center gap-2 lg:hidden">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
             <Zap className="h-4 w-4 text-white" />
           </div>
           <span className="text-lg font-bold text-slate-900 dark:text-white">SmartProcure</span>
         </div>
+      <div className="w-full max-w-sm">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Create an account</h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Fill in your details to get started</p>
@@ -106,6 +146,7 @@ export default function RegisterPage() {
             </p>
           </>
         )}
+      </div>
       </div>
     </div>
   )

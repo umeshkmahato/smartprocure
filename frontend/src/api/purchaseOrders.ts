@@ -1,7 +1,10 @@
 import client from './client'
 import type { ApiResponse, PageResponse, PurchaseOrder, CreatePoRequest } from '@/types'
+import { mockPurchaseOrdersApi } from '@/mocks/purchaseOrders.mock'
 
-export const purchaseOrdersApi = {
+const USE_MOCK = import.meta.env.VITE_USE_MOCK_DATA === 'true'
+
+export const purchaseOrdersApi = USE_MOCK ? mockPurchaseOrdersApi : {
   list: (params?: { status?: string; vendorId?: number; keyword?: string; page?: number; size?: number; sort?: string; dir?: string }) =>
     client
       .get<ApiResponse<PageResponse<PurchaseOrder>>>('/purchase-orders', { params })

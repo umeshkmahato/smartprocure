@@ -1,7 +1,10 @@
 import client from './client'
 import type { ApiResponse, PageResponse, Rfq, Quotation } from '@/types'
+import { mockQuotationsApi } from '@/mocks/quotations.mock'
 
-export const quotationsApi = {
+const USE_MOCK = import.meta.env.VITE_USE_MOCK_DATA === 'true'
+
+export const quotationsApi = USE_MOCK ? mockQuotationsApi : {
   listRfqs: (params?: { status?: string; search?: string; page?: number; size?: number; sort?: string; dir?: string }) =>
     client.get<ApiResponse<PageResponse<Rfq>>>('/quotations/rfqs', { params }).then((r) => r.data.data),
 

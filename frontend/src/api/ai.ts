@@ -1,10 +1,13 @@
 import client from './client'
 import type { ApiResponse, AiSimilarVendor } from '@/types'
+import { mockAiApi } from '@/mocks/ai.mock'
+
+const USE_MOCK = import.meta.env.VITE_USE_MOCK_DATA === 'true'
 
 /** Separate timeout for AI calls — Ollama can be slow on first inference. */
 const AI_TIMEOUT = 90_000
 
-export const aiApi = {
+export const aiApi = USE_MOCK ? mockAiApi : {
   /**
    * General-purpose procurement assistant.
    * POST /api/v1/ai/chat

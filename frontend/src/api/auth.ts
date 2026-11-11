@@ -1,7 +1,10 @@
 import client from './client'
 import type { AuthResponse, LoginRequest, RegisterRequest, ApiResponse } from '@/types'
+import { mockAuthApi } from '@/mocks/auth.mock'
 
-export const authApi = {
+const USE_MOCK = import.meta.env.VITE_USE_MOCK_DATA === 'true'
+
+export const authApi = USE_MOCK ? mockAuthApi : {
   login: (req: LoginRequest) =>
     client.post<ApiResponse<AuthResponse>>('/auth/login', req).then((r) => r.data.data),
 
